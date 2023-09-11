@@ -46,6 +46,7 @@ CONF_BOTTOM = "bottom"
 CONF_RIGHT = "right"
 CONF_LEFT = "left"
 CONF_FILE_OUT = "file_out"
+CONF_NO_MATCH_REQ = "no_matches_req"
 
 AREA_SCHEMA = vol.Schema(
     {
@@ -72,6 +73,7 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
         vol.Required(CONF_TIMEOUT, default=90): cv.positive_int,
         vol.Optional(CONF_AUTH_KEY, default=""): cv.string,
         vol.Optional(CONF_FILE_OUT, default=[]): vol.All(cv.ensure_list, [cv.template]),
+        vol.Optional(CONF_NO_MATCH_REQ, default=False): cv.boolean,
         vol.Optional(CONF_CONFIDENCE, default=0.0): vol.Range(min=0, max=100),
         vol.Optional(CONF_LABELS, default=[]): vol.All(
             cv.ensure_list, [vol.Any(cv.string, LABEL_SCHEMA)]
@@ -141,6 +143,7 @@ class Doods(ImageProcessingEntity):
         self._doods = doods
         self._file_out = config[CONF_FILE_OUT]
         self._detector_name = detector["name"]
+        self._no_matches_req = config[CONF_NO_MATCH_REQ]
 
         # detector config and aspect ratio
         self._width = None
@@ -382,7 +385,7 @@ class Doods(ImageProcessingEntity):
             total_matches += 1
 
         # Save Images
-        if total_matches and self._file_out:
+        if (total_matches or self._no_matches_req) and self._file_out:
             paths = []
             for path_template in self._file_out:
                 if isinstance(path_template, template.Template):
@@ -394,7 +397,7 @@ class Doods(ImageProcessingEntity):
             self._save_image(image, matches, paths)
         else:
             _LOGGER.debug(
-                "Not saving image(s), no detections found or no output file configured"
+                "Not saving image(s): no detections found (and ) or no output file configured"
             )
 
         self._matches = matches
